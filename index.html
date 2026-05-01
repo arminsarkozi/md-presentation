@@ -231,33 +231,74 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
         }
 
-        /* Printing logic for PDF export */
+        /* PRINTING OVERRIDES */
         @media print {
+            /* Set page size to landscape */
             @page {
                 size: landscape;
                 margin: 0;
             }
-            body {
-                background: white;
+
+            /* Hide everything that isn't a slide */
+            body, html {
+                background: white !important;
+                height: auto !important;
+                overflow: visible !important;
             }
-            header, main, #presentation-overlay, #nav-hint, .modal-overlay {
+
+            header, 
+            main > div:first-child, 
+            #presentation-overlay, 
+            #nav-hint, 
+            .modal-overlay,
+            #manual-save-btn,
+            .slide-counter {
                 display: none !important;
             }
+
+            /* Force preview container to be the only thing visible */
+            main {
+                display: block !important;
+                overflow: visible !important;
+            }
+
+            .preview-canvas {
+                background: white !important;
+                overflow: visible !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                padding: 0 !important;
+            }
+
             #preview-container {
                 display: block !important;
                 padding: 0 !important;
-            }
-            .slide-wrapper {
-                page-break-after: always;
-                border-radius: 0;
-                box-shadow: none;
-                width: 100vw;
-                height: 100vh;
                 margin: 0 !important;
+                max-width: none !important;
             }
+
+            /* Each slide should be a full page */
+            .slide-wrapper {
+                page-break-after: always !important;
+                break-after: page !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                display: block !important;
+                visibility: visible !important;
+            }
+
+            /* Scale fonts for print since container queries might fail in some print engines */
             .slide-content {
-                font-size: 2.2vw !important; 
+                font-size: 2.2vw !important;
             }
+            .slide-content h1 { font-size: 4.5vw !important; }
+            .slide-content h2 { font-size: 3vw !important; }
+            .slide-content h3 { font-size: 2.5vw !important; }
         }
     </style>
 </head>
@@ -283,8 +324,9 @@
             <button onclick="exportToPPTX()" class="px-3 py-1.5 rounded-md bg-[#1f2233] hover:bg-[#2a2e42] text-gray-300 font-medium transition-colors flex items-center gap-2 border border-[#3b405a]">
                 PPTX
             </button>
-            <button onclick="exportToPDF()" class="px-3 py-1.5 rounded-md bg-[#1f2233] hover:bg-[#2a2e42] text-gray-300 font-medium transition-colors flex items-center gap-2 border border-[#3b405a]">
-                PDF
+            <button onclick="exportToPDF()" class="px-3 py-1.5 rounded-md bg-gray-600 hover:bg-gray-500 text-white font-medium transition-colors flex items-center gap-2 shadow-lg">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                Export PDF
             </button>
             <button onclick="present()" class="ml-2 px-4 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/20">
                 Present 
@@ -298,7 +340,7 @@
         <div class="w-1/2 h-full border-r border-[#1f2233] flex flex-col relative shadow-[10px_0_15px_-3px_rgba(0,0,0,0.1)] z-10">
             <textarea id="editor"></textarea>
         </div>
-        <div class="w-1/2 h-full preview-canvas overflow-y-auto relative">
+        <div id="canvas-area" class="w-1/2 h-full preview-canvas overflow-y-auto relative">
             <div id="preview-container" class="p-8 pb-24 max-w-4xl mx-auto flex flex-col gap-10"></div>
         </div>
     </main>
@@ -592,9 +634,12 @@ Engage your audience with integrated multimedia content.
         // Auto-save logic
         setInterval(() => {
             saveToLocal(false);
-        }, 60000); // 60,000ms = 1 minute
+        }, 60000); 
 
         function exportToPDF() {
+            // Force a re-render before printing to ensure all DOM elements are fresh
+            renderSlides();
+            // Trigger browser print dialog
             window.print();
         }
 
