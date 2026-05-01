@@ -806,42 +806,40 @@
                     <title>Presenter View</title>
                     <script src="https://cdn.tailwindcss.com"><\/script>
                     <style>
-                        body { background: #0f111a; color: #e5e7eb; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+                        body { background: #0f111a; color: #e5e7eb; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding: 24px; gap: 24px; box-sizing: border-box; }
                         .preview-box { background: #1a1d27; border: 1px solid #3b405a; border-radius: 8px; overflow: hidden; position: relative; width: 100%; aspect-ratio: 16/9; }
-                        .slide-wrapper { transform-origin: top left; width: 100% !important; border-radius: 0 !important; box-shadow: none !important; pointer-events: none; }
+                        .slide-wrapper { position: absolute; top: 0; left: 0; transform-origin: top left; width: 1000px !important; border-radius: 0 !important; box-shadow: none !important; pointer-events: none; }
                         .notes-area { background: #1a1d27; border: 1px solid #3b405a; border-radius: 8px; padding: 24px; font-size: 1.5rem; line-height: 1.6; overflow-y: auto; flex: 1; }
-                        .label { color: #94a3b8; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.05em; }
-                        .nav-btn { background: #1f2233; border: 1px solid #3b405a; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+                        .label { color: #94a3b8; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 0.05em; }
+                        .nav-btn { background: #1f2233; border: 1px solid #3b405a; padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; color: #e5e7eb; cursor: pointer; }
                         .nav-btn:hover { background: #2a2e42; border-color: #4b526d; }
                         .nav-btn:active { transform: scale(0.98); }
                     </style>
                 </head>
-                <body class="p-6 gap-6">
-                    <div class="flex gap-8 h-2/3">
-                        <div class="w-7/12 flex flex-col gap-2">
-                             <div class="flex-1 flex flex-col min-h-0">
-                                <span class="label">Notes & Preview</span>
-                                <div id="notes" class="notes-area"></div>
-                            </div>
+                <body>
+                    <div class="flex gap-8 h-2/3 flex-1 min-h-0">
+                        <div class="w-1/2 flex flex-col min-h-0">
+                            <span class="label">Speaker Notes</span>
+                            <div id="notes" class="notes-area"></div>
                         </div>
-                        <div class="w-5/12 flex flex-col gap-6">
-                            <div class="flex flex-col">
+                        <div class="w-1/2 flex flex-col gap-6 min-h-0">
+                            <div class="flex-1 flex flex-col min-h-0">
                                 <span class="label">Current Slide</span>
                                 <div id="current-slide" class="preview-box"></div>
                             </div>
-                            <div class="flex flex-col">
+                            <div class="flex-1 flex flex-col min-h-0">
                                 <span class="label">Next Slide</span>
                                 <div id="next-slide" class="preview-box"></div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="flex justify-between items-center bg-[#1a1d27] border border-[#3b405a] p-4 rounded-xl shadow-2xl">
-                        <div class="flex items-center gap-6">
-                            <div id="timer" class="text-3xl font-bold font-mono text-blue-400">00:00:00</div>
-                            <div id="counter" class="text-xl font-medium text-gray-400 border-l border-gray-700 pl-6">Slide 1 / 1</div>
+                    <div class="flex justify-between items-center bg-[#1a1d27] border border-[#3b405a] p-5 rounded-xl shadow-2xl shrink-0">
+                        <div class="flex items-center gap-8">
+                            <div id="timer" class="text-3xl font-bold font-mono text-blue-400 leading-none">00:00:00</div>
+                            <div id="counter" class="text-xl font-medium text-gray-400 border-l border-gray-700 pl-8 leading-none">Slide 1 / 1</div>
                         </div>
-                        <div class="flex gap-3">
+                        <div class="flex gap-4">
                             <button onclick="window.opener.prevSlide()" class="nav-btn flex items-center gap-2">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                                 Previous
@@ -868,6 +866,10 @@
                             if (['ArrowLeft', 'Backspace'].includes(e.key)) window.opener.prevSlide();
                             if (e.key === 'Escape') window.opener.exitPresent();
                         };
+                        
+                        window.addEventListener('resize', () => {
+                            window.opener.syncPresenter();
+                        });
                     <\/script>
                 </body>
                 </html>
@@ -893,11 +895,13 @@
 
             if (!currentBox) return;
 
+            // Reset and Re-render Current Slide
             currentBox.innerHTML = '';
             const currentWrap = slideElements[currentSlideIndex].cloneNode(true);
             currentWrap.className = 'slide-wrapper theme-' + currentTheme.split('-')[1];
             currentBox.appendChild(currentWrap);
 
+            // Reset and Re-render Next Slide
             nextBox.innerHTML = '';
             if (currentSlideIndex < slideElements.length - 1) {
                 const nextWrap = slideElements[currentSlideIndex + 1].cloneNode(true);
@@ -907,14 +911,18 @@
                 nextBox.innerHTML = '<div class="h-full flex items-center justify-center text-gray-700 uppercase tracking-widest text-xs font-bold bg-[#0a0c12]">End of Presentation</div>';
             }
 
+            // Sync notes and counter
             const rawNote = speakerNotes[currentSlideIndex] || 'No notes for this slide.';
             notesBox.innerText = rawNote;
             counterBox.innerText = `Slide ${currentSlideIndex + 1} / ${slideElements.length}`;
 
+            // Correct Scaling Logic
             [currentBox, nextBox].forEach(box => {
                 const wrapper = box.querySelector('.slide-wrapper');
                 if (wrapper) {
-                    const scale = box.offsetWidth / wrapper.offsetWidth;
+                    // We assume the internal virtual width of the slide for scaling is 1000px
+                    const scale = box.offsetWidth / 1000;
+                    wrapper.style.width = '1000px';
                     wrapper.style.transform = `scale(${scale})`;
                 }
             });
