@@ -1,4 +1,349 @@
-# Welcome to the Markdown editor
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown to Presentation Converter</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Highlight.js for Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-ocean.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/markdown/markdown.min.js"></script>
+
+    <!-- Export Libraries -->
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f111a; 
+        }
+
+        /* Editor Overrides */
+        .CodeMirror {
+            height: 100% !important;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            background: #0f111a !important;
+        }
+        .CodeMirror-gutters {
+            background: #0f111a !important;
+            border-right: 1px solid #1f2233 !important;
+        }
+        .CodeMirror-linenumber {
+            color: #4b526d !important;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track { background: #0f111a; }
+        ::-webkit-scrollbar-thumb { background: #2a2e42; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b405a; }
+
+        /* Slide Preview Canvas Pattern */
+        .preview-canvas {
+            background-color: #1a1d27;
+            background-image: radial-gradient(#2a2e42 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        /* Slide Container & Typography using Container Queries */
+        .slide-wrapper {
+            container-type: inline-size;
+            aspect-ratio: 16 / 9;
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s ease;
+            position: relative;
+        }
+
+        .slide-content {
+            font-size: 2.2cqw;
+            color: #1a1a1a;
+            height: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Slide Internal Formatting */
+        .slide-content h1 { font-size: 4.5cqw; font-weight: 800; margin-bottom: 2cqw; line-height: 1.1; letter-spacing: -0.03em; color: #000; }
+        .slide-content h2 { font-size: 3cqw; font-weight: 500; margin-bottom: 2cqw; line-height: 1.2; color: #4a4a4a; }
+        .slide-content h3 { font-size: 2.5cqw; font-weight: 600; margin-bottom: 1.5cqw; color: #2a2a2a; }
+        .slide-content p { margin-bottom: 1.5cqw; line-height: 1.5; color: #333; }
+        .slide-content ul { margin-left: 3cqw; margin-bottom: 1.5cqw; list-style-type: disc; color: #333; }
+        .slide-content li { margin-bottom: 0.8cqw; line-height: 1.4; }
+        .slide-content strong { font-weight: 700; color: #000; }
+        .slide-content em { font-style: italic; }
+        .slide-content blockquote { border-left: 0.5cqw solid #e5e7eb; padding-left: 2cqw; font-style: italic; color: #6b7280; }
+        .slide-content code:not(.hljs) { background: #f3f4f6; padding: 0.2cqw 0.6cqw; border-radius: 0.4cqw; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; color: #1a1a1a; }
+        .slide-content pre { border-radius: 1cqw; overflow-x: auto; margin-bottom: 1.5cqw; background: #282c34; }
+        .slide-content pre code { padding: 2cqw; font-size: 1.8cqw; display: block; border-radius: 1cqw; }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; 
+            height: 0;
+            overflow: hidden;
+            border-radius: 1cqw;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            background: #000;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .slide-layout-center {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 8cqw;
+            height: 100%;
+        }
+        
+        .slide-layout-split {
+            display: flex;
+            height: 100%;
+        }
+        
+        .slide-layout-split-text {
+            flex: 1;
+            padding: 8cqw 4cqw 8cqw 8cqw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .slide-layout-split-image {
+            flex: 1;
+            padding: 4cqw;
+            display: flex;
+            flex-direction: row; 
+            flex-wrap: wrap; 
+            gap: 2cqw;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .slide-layout-split-image img, 
+        .slide-layout-center img {
+            max-height: 100%;
+            max-width: 100%;
+            flex-shrink: 1; 
+            min-width: 0; 
+            object-fit: contain !important; 
+            border-radius: 0.8cqw;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .slide-layout-split-image img {
+            flex: 1 1 40%; 
+        }
+
+        .image-grid-2x1 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2cqw;
+            width: 100%;
+            height: 100%;
+            padding: 4cqw;
+        }
+
+        .image-grid-2x2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 2cqw;
+            width: 100%;
+            height: 100%;
+            padding: 4cqw;
+        }
+
+        #presentation-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        #presentation-overlay.active { display: flex; }
+
+        #presentation-slide-container {
+            width: 90vw;
+            max-width: 1600px;
+        }
+
+        .slide-counter {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        #nav-hint {
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+        #nav-hint.hidden { opacity: 0; pointer-events: none; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 50;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: #1a1d27;
+            border: 1px solid #3b405a;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        @media print {
+            @page { size: landscape; margin: 0; }
+            body, html { background: white !important; height: auto !important; overflow: visible !important; }
+            header, main > div:first-child, #presentation-overlay, #nav-hint, .modal-overlay, #manual-save-btn, .slide-counter { display: none !important; }
+            main { display: block !important; overflow: visible !important; }
+            .preview-canvas { background: white !important; overflow: visible !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; padding: 0 !important; }
+            #preview-container { display: block !important; padding: 0 !important; margin: 0 !important; max-width: none !important; }
+            .slide-wrapper { page-break-after: always !important; break-after: page !important; width: 100vw !important; height: 100vh !important; border-radius: 0 !important; box-shadow: none !important; margin: 0 !important; display: block !important; visibility: visible !important; }
+            .slide-content { font-size: 2.2vw !important; }
+            .slide-content h1 { font-size: 4.5vw !important; }
+            .slide-content h2 { font-size: 3vw !important; }
+            .slide-content h3 { font-size: 2.5vw !important; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col text-white overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-14 border-b border-[#1f2233] bg-[#0f111a] flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
+        <div class="flex items-center gap-3">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            <h1 class="font-semibold text-gray-200 tracking-wide text-sm">Markdown &rarr; Presentation</h1>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+            <button onclick="toggleImageModal()" class="px-3 py-1.5 rounded-md bg-[#1f2233] hover:bg-[#2a2e42] text-gray-300 font-medium transition-colors flex items-center gap-2 border border-[#3b405a]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                Images
+            </button>
+            <div class="h-6 w-[1px] bg-[#1f2233] mx-1"></div>
+            <button id="manual-save-btn" onclick="saveToLocal(true)" class="px-3 py-1.5 rounded-md bg-[#1f2233] hover:bg-[#2a2e42] text-gray-300 font-medium transition-colors flex items-center gap-2 border border-[#3b405a]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Save
+            </button>
+            <div class="h-6 w-[1px] bg-[#1f2233] mx-1"></div>
+            <button onclick="exportToPPTX()" class="px-3 py-1.5 rounded-md bg-[#1f2233] hover:bg-[#2a2e42] text-gray-300 font-medium transition-colors flex items-center gap-2 border border-[#3b405a]">
+                PPTX
+            </button>
+            <button onclick="exportToPDF()" class="px-3 py-1.5 rounded-md bg-gray-600 hover:bg-gray-500 text-white font-medium transition-colors flex items-center gap-2 shadow-lg">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                Export PDF
+            </button>
+            <button onclick="present()" class="ml-2 px-4 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/20">
+                Present 
+                <span class="text-blue-200 text-xs bg-blue-700/50 px-1.5 py-0.5 rounded border border-blue-500/30">Ctrl+Enter</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        <div class="w-1/2 h-full border-r border-[#1f2233] flex flex-col relative shadow-[10px_0_15px_-3px_rgba(0,0,0,0.1)] z-10">
+            <textarea id="editor"></textarea>
+        </div>
+        <div id="canvas-area" class="w-1/2 h-full preview-canvas overflow-y-auto relative">
+            <div id="preview-container" class="p-8 pb-24 max-w-4xl mx-auto flex flex-col gap-10"></div>
+        </div>
+    </main>
+
+    <!-- Fullscreen Presentation Overlay -->
+    <div id="presentation-overlay" onclick="handleOverlayClick(event)">
+        <div id="presentation-slide-container"></div>
+        <div id="nav-hint" class="absolute bottom-12 left-0 right-0 flex justify-center gap-4 text-gray-500 text-xs uppercase tracking-widest pointer-events-none">
+            Click, Space, or Arrow keys to navigate • Esc to exit
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="image-modal" class="modal-overlay" onclick="if(event.target === this) toggleImageModal()">
+        <div class="modal-content">
+            <div class="p-4 border-b border-[#3b405a] flex items-center justify-between">
+                <h3 class="font-semibold">Image Library</h3>
+                <button onclick="toggleImageModal()" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <div class="mb-6">
+                    <label class="block w-full cursor-pointer bg-[#2a2e42] border-2 border-dashed border-[#3b405a] hover:border-blue-500 rounded-lg p-8 text-center transition-colors">
+                        <input type="file" class="hidden" accept="image/*" onchange="handleFileUpload(this)">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 text-gray-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <span class="text-sm font-medium text-gray-300">Click to upload or drag image here</span>
+                        <p class="text-xs text-gray-500 mt-1">Supports PNG, JPG, WebP</p>
+                    </label>
+                </div>
+                <div id="image-grid" class="grid grid-cols-2 gap-4"></div>
+            </div>
+            <div class="p-4 border-t border-[#3b405a] text-right">
+                <button onclick="toggleImageModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-md text-sm font-medium">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userImages = JSON.parse(localStorage.getItem('presentation_images')) || {};
+
+        const initialMarkdown = localStorage.getItem('markdown_presentation_content') || `# Welcome to the Markdown editor
 ## Create professional slides in minutes, not hours
 ![Img1](https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500)
 
@@ -17,4 +362,306 @@
 - YouTube support
 - PPTX & PDF export
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>`;
+
+        const editorElement = document.getElementById("editor");
+        editorElement.value = initialMarkdown;
+        
+        const editor = CodeMirror.fromTextArea(editorElement, {
+            mode: "markdown",
+            theme: "material-ocean",
+            lineNumbers: true,
+            lineWrapping: true,
+            viewportMargin: Infinity
+        });
+
+        const previewContainer = document.getElementById('preview-container');
+        const overlay = document.getElementById('presentation-overlay');
+        const overlayContainer = document.getElementById('presentation-slide-container');
+        const navHint = document.getElementById('nav-hint');
+        const imageGrid = document.getElementById('image-grid');
+        
+        let currentSlideIndex = 0;
+        let slideElements = [];
+
+        function sanitizeIframe(iframe) {
+            let src = iframe.getAttribute('src');
+            if (src && src.includes('youtube.com/embed')) {
+                const url = new URL(src);
+                url.searchParams.set('origin', window.location.origin);
+                url.searchParams.set('enablejsapi', '1');
+                iframe.setAttribute('src', url.toString());
+            }
+            iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+        }
+
+        function toggleImageModal() {
+            const modal = document.getElementById('image-modal');
+            modal.classList.toggle('active');
+            if (modal.classList.contains('active')) renderImageGrid();
+        }
+
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const id = `img_${Object.keys(userImages).length + 1}.${file.name.split('.').pop()}`;
+                userImages[id] = e.target.result;
+                renderImageGrid();
+                renderSlides(); 
+            };
+            reader.readAsDataURL(file);
+            input.value = ''; 
+        }
+
+        function copyToClipboard(text) {
+            const el = document.createElement('textarea');
+            el.value = `![Alt Text](${text})`;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded shadow-lg text-sm z-[100]';
+            toast.innerText = 'Copied Markdown syntax!';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        function deleteImage(id) {
+            delete userImages[id];
+            renderImageGrid();
+            renderSlides();
+        }
+
+        function renderImageGrid() {
+            imageGrid.innerHTML = '';
+            Object.entries(userImages).forEach(([id, data]) => {
+                const div = document.createElement('div');
+                div.className = 'bg-[#0f111a] p-3 rounded border border-[#3b405a] group relative';
+                div.innerHTML = `
+                    <img src="${data}" class="w-full h-24 object-cover rounded mb-2 border border-[#3b405a]">
+                    <div class="flex flex-col gap-1">
+                        <code class="text-[10px] text-gray-400 bg-black/30 px-1 py-0.5 rounded truncate">${id}</code>
+                        <div class="flex gap-2">
+                            <button onclick="copyToClipboard('${id}')" class="flex-1 text-[10px] bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 py-1 rounded transition-colors">Copy Link</button>
+                            <button onclick="deleteImage('${id}')" class="text-[10px] bg-red-600/20 text-red-400 hover:bg-red-600/40 px-2 rounded transition-colors">&times;</button>
+                        </div>
+                    </div>
+                `;
+                imageGrid.appendChild(div);
+            });
+        }
+
+        function resolveImageSrc(src) {
+            return userImages[src] || src;
+        }
+
+        function createSlideElement(slideMd, index, total) {
+            const trimmedMd = slideMd.trim();
+            if (!trimmedMd) return null;
+
+            // PRE-PARSING FIX: Force separation of images immediately following text
+            const sanitizedMd = trimmedMd.replace(/([^\n])\n(!\[.*\]\(.*\))/g, '$1\n\n$2');
+            
+            const slideHtml = marked.parse(sanitizedMd);
+            const slideWrapper = document.createElement('div');
+            slideWrapper.className = 'slide-wrapper';
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = slideHtml;
+
+            const images = [];
+            const iframes = [];
+            const textNodes = [];
+
+            Array.from(tempDiv.childNodes).forEach(node => {
+                const textContent = node.textContent?.trim() || "";
+                
+                if (node.nodeName === 'P') {
+                    const imgsInP = node.querySelectorAll('img');
+                    const iframesInP = node.querySelectorAll('iframe');
+                    
+                    if (imgsInP.length > 0) imgsInP.forEach(i => images.push(i));
+                    if (iframesInP.length > 0) iframesInP.forEach(i => iframes.push(i));
+                    
+                    let clonedNode = node.cloneNode(true);
+                    clonedNode.querySelectorAll('img, iframe').forEach(el => el.remove());
+                    if (clonedNode.textContent.trim().length > 0) {
+                        textNodes.push(clonedNode);
+                    }
+                } else if (node.nodeName === 'IFRAME') {
+                    iframes.push(node);
+                } else if (node.nodeName === 'IMG') {
+                    images.push(node);
+                } else if (node.nodeType === 1 || (node.nodeType === 3 && textContent.length > 0)) {
+                    textNodes.push(node);
+                }
+            });
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'slide-content';
+
+            const hasText = textNodes.length > 0;
+            const imgCount = images.length;
+            const hasMedia = imgCount > 0 || iframes.length > 0;
+
+            if (imgCount === 4) {
+                const grid = document.createElement('div');
+                grid.className = 'image-grid-2x2';
+                images.forEach(img => {
+                    img.src = resolveImageSrc(img.getAttribute('src'));
+                    img.className = 'w-full h-full object-cover rounded-lg shadow-lg';
+                    grid.appendChild(img);
+                });
+                if (hasText) {
+                    contentDiv.innerHTML = `<div class="slide-layout-split"><div class="slide-layout-split-text"></div><div class="slide-layout-split-image" style="flex: 1.5;"></div></div>`;
+                    textNodes.forEach(n => contentDiv.querySelector('.slide-layout-split-text').appendChild(n.cloneNode(true)));
+                    contentDiv.querySelector('.slide-layout-split-image').appendChild(grid);
+                } else {
+                    contentDiv.appendChild(grid);
+                }
+            } 
+            else if (imgCount === 2 && !hasText && iframes.length === 0) {
+                const grid = document.createElement('div');
+                grid.className = 'image-grid-2x1';
+                images.forEach(img => {
+                    img.src = resolveImageSrc(img.getAttribute('src'));
+                    img.className = 'w-full h-full object-cover rounded-lg shadow-lg';
+                    grid.appendChild(img);
+                });
+                contentDiv.appendChild(grid);
+            }
+            else if (hasMedia && hasText) {
+                contentDiv.innerHTML = `<div class="slide-layout-split"><div class="slide-layout-split-text"></div><div class="slide-layout-split-image"></div></div>`;
+                const textCol = contentDiv.querySelector('.slide-layout-split-text');
+                const mediaCol = contentDiv.querySelector('.slide-layout-split-image');
+                textNodes.forEach(n => textCol.appendChild(n.cloneNode(true)));
+                images.forEach(img => {
+                    img.src = resolveImageSrc(img.getAttribute('src'));
+                    img.className = 'max-w-full object-contain rounded-lg shadow-xl';
+                    mediaCol.appendChild(img);
+                });
+                iframes.forEach(iframe => {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'video-container mb-2';
+                    sanitizeIframe(iframe);
+                    wrap.appendChild(iframe);
+                    mediaCol.appendChild(wrap);
+                });
+            }
+            else {
+                const center = document.createElement('div');
+                center.className = 'slide-layout-center';
+                if (hasMedia) {
+                    images.forEach(img => {
+                        img.src = resolveImageSrc(img.getAttribute('src'));
+                        img.className = 'max-h-[70cqh] object-contain rounded-lg shadow-xl mx-auto block mb-4';
+                        center.appendChild(img);
+                    });
+                }
+                textNodes.forEach(n => center.appendChild(n.cloneNode(true)));
+                contentDiv.appendChild(center);
+            }
+
+            contentDiv.insertAdjacentHTML('beforeend', `<div class="slide-counter">${index + 1} / ${total}</div>`);
+            slideWrapper.appendChild(contentDiv);
+            slideWrapper.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+
+            return slideWrapper;
+        }
+
+        function renderSlides() {
+            const markdown = editor.getValue();
+            const rawSlides = markdown.split(/^-{3,}\s*$/gm);
+            previewContainer.innerHTML = '';
+            slideElements = [];
+            rawSlides.forEach((slideMd, index) => {
+                const el = createSlideElement(slideMd, index, rawSlides.length);
+                if (el) {
+                    slideElements.push(el.cloneNode(true));
+                    previewContainer.appendChild(el);
+                }
+            });
+        }
+
+        function saveToLocal(showFeedback = false) {
+            localStorage.setItem('markdown_presentation_content', editor.getValue());
+            localStorage.setItem('presentation_images', JSON.stringify(userImages));
+            if (showFeedback) {
+                const btn = document.getElementById('manual-save-btn');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<span class="text-green-400">Saved!</span>';
+                setTimeout(() => btn.innerHTML = orig, 2000);
+            }
+        }
+
+        setInterval(() => saveToLocal(false), 60000);
+
+        function exportToPDF() { renderSlides(); window.print(); }
+
+        async function exportToPPTX() {
+            const pptx = new PptxGenJS();
+            pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
+            pptx.layout = 'WIDE';
+            const rawSlides = editor.getValue().split(/^-{3,}\s*$/gm);
+
+            rawSlides.forEach((slideMd, idx) => {
+                const slide = pptx.addSlide();
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = marked.parse(slideMd.trim());
+                
+                const h1 = tempDiv.querySelector('h1');
+                const img = tempDiv.querySelector('img');
+                const listItems = Array.from(tempDiv.querySelectorAll('li')).map(li => li.innerText);
+
+                if (h1) slide.addText(h1.innerText, { x: 0.5, y: 0.6, w: 12, fontSize: 36, bold: true, color: '000000' });
+                if (img) slide.addImage({ data: resolveImageSrc(img.getAttribute('src')), x: 7, y: 1.5, w: 5, h: 4, sizing: { type: 'contain', w: 5, h: 4 } });
+                if (listItems.length > 0) slide.addText(listItems.map(t => ({ text: t, options: { bullet: true } })), { x: 0.5, y: 1.8, w: 6, fontSize: 18 });
+            });
+            pptx.writeFile({ fileName: `Presentation.pptx` });
+        }
+
+        editor.on("change", () => {
+            clearTimeout(window.renderTimeout);
+            window.renderTimeout = setTimeout(renderSlides, 150);
+        });
+
+        function present() {
+            if (slideElements.length === 0) return;
+            currentSlideIndex = 0;
+            updatePresentation();
+            overlay.classList.add('active');
+        }
+
+        function updatePresentation() {
+            overlayContainer.innerHTML = '';
+            overlayContainer.appendChild(slideElements[currentSlideIndex].cloneNode(true));
+        }
+
+        function nextSlide() {
+            if (currentSlideIndex < slideElements.length - 1) { currentSlideIndex++; updatePresentation(); } 
+            else exitPresent();
+        }
+
+        function prevSlide() {
+            if (currentSlideIndex > 0) { currentSlideIndex--; updatePresentation(); }
+        }
+
+        function exitPresent() { overlay.classList.remove('active'); }
+        function handleOverlayClick(e) { if (!e.target.closest('iframe')) nextSlide(); }
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') present();
+            if (overlay.classList.contains('active')) {
+                if (['ArrowRight', ' ', 'Enter'].includes(e.key)) nextSlide();
+                if (['ArrowLeft', 'Backspace'].includes(e.key)) prevSlide();
+                if (e.key === 'Escape') exitPresent();
+            }
+        });
+
+        renderSlides();
+    </script>
+</body>
+</html>
