@@ -33,7 +33,7 @@
             background-color: #0f111a; 
         }
 
-        /* Editor Overrides */
+        /* Editor Overrides - Fixed Overlap */
         .CodeMirror {
             height: 100% !important;
             font-family: 'JetBrains Mono', monospace;
@@ -44,9 +44,14 @@
         .CodeMirror-gutters {
             background: #0f111a !important;
             border-right: 1px solid #1f2233 !important;
+            padding-right: 8px; /* Extra space for line numbers */
         }
         .CodeMirror-linenumber {
             color: #4b526d !important;
+            padding-left: 12px;
+        }
+        .CodeMirror-lines {
+            padding-left: 10px; /* Space between gutter and text */
         }
 
         /* Custom Scrollbar */
@@ -246,17 +251,28 @@
         #presentation-overlay.active { display: flex; }
 
         #presentation-slide-container {
-            width: 90vw;
-            max-width: 1600px;
+            width: 100vw;
+            height: 100vh;
+            padding: 4vmin;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+        #presentation-slide-container .slide-wrapper {
+            width: 100%;
+            max-width: calc((100vh - 8vmin) * 16 / 9);
+            aspect-ratio: 16 / 9;
+            margin: 0 auto;
         }
 
         .slide-counter {
             position: absolute;
-            bottom: 20px;
-            right: 30px;
+            bottom: 2cqw;
+            right: 3cqw;
             color: gray;
             opacity: 0.6;
-            font-size: 14px;
+            font-size: 1.5cqw;
             font-weight: 500;
         }
 
@@ -804,6 +820,7 @@
                 <html>
                 <head>
                     <title>Presenter View</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
                     <script src="https://cdn.tailwindcss.com"><\/script>
                     <style>
                         body { background: #0f111a; color: #e5e7eb; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding: 24px; gap: 24px; box-sizing: border-box; }
@@ -881,13 +898,20 @@
             style.innerHTML = document.querySelector('style').innerHTML;
             presenterWindow.document.head.appendChild(style);
             
-            syncPresenter();
+            // Allow DOM to layout so offsetWidth is correct
+            setTimeout(() => {
+                syncPresenter();
+            }, 50);
         }
 
         function syncPresenter() {
             if (!presenterWindow || presenterWindow.closed) return;
             
             const doc = presenterWindow.document;
+            
+            // Apply theme to the body so CSS descendant selectors target correctly
+            doc.body.className = `p-6 gap-6 flex flex-col min-h-0 ${currentTheme}`;
+
             const currentBox = doc.getElementById('current-slide');
             const nextBox = doc.getElementById('next-slide');
             const notesBox = doc.getElementById('notes');
@@ -898,14 +922,14 @@
             // Reset and Re-render Current Slide
             currentBox.innerHTML = '';
             const currentWrap = slideElements[currentSlideIndex].cloneNode(true);
-            currentWrap.className = 'slide-wrapper theme-' + currentTheme.split('-')[1];
+            currentWrap.className = 'slide-wrapper'; // Theme is managed by the body
             currentBox.appendChild(currentWrap);
 
             // Reset and Re-render Next Slide
             nextBox.innerHTML = '';
             if (currentSlideIndex < slideElements.length - 1) {
                 const nextWrap = slideElements[currentSlideIndex + 1].cloneNode(true);
-                nextWrap.className = 'slide-wrapper theme-' + currentTheme.split('-')[1];
+                nextWrap.className = 'slide-wrapper'; 
                 nextBox.appendChild(nextWrap);
             } else {
                 nextBox.innerHTML = '<div class="h-full flex items-center justify-center text-gray-700 uppercase tracking-widest text-xs font-bold bg-[#0a0c12]">End of Presentation</div>';
@@ -920,9 +944,9 @@
             [currentBox, nextBox].forEach(box => {
                 const wrapper = box.querySelector('.slide-wrapper');
                 if (wrapper) {
-                    // We assume the internal virtual width of the slide for scaling is 1000px
                     const scale = box.offsetWidth / 1000;
                     wrapper.style.width = '1000px';
+                    wrapper.style.height = '562.5px'; // Exact 16:9 ratio of 1000px
                     wrapper.style.transform = `scale(${scale})`;
                 }
             });
