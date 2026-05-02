@@ -5,26 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Markdown to Presentation Converter</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
-    <!-- Highlight.js for Syntax Highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     
-    <!-- CodeMirror -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/material-ocean.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/markdown/markdown.min.js"></script>
 
-    <!-- Export Libraries -->
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
     <style>
@@ -354,7 +348,6 @@
 </head>
 <body class="h-screen flex flex-col text-white overflow-hidden theme-default" id="app-body">
 
-    <!-- Header -->
     <header class="h-14 border-b border-[#1f2233] bg-[#0f111a] flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
         <div class="flex items-center gap-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
@@ -389,7 +382,6 @@
         </div>
     </header>
 
-    <!-- Main Workspace -->
     <main class="flex-1 flex overflow-hidden">
         <div class="w-1/2 h-full border-r border-[#1f2233] flex flex-col relative shadow-[10px_0_15px_-3px_rgba(0,0,0,0.1)] z-10">
             <textarea id="editor"></textarea>
@@ -399,7 +391,6 @@
         </div>
     </main>
 
-    <!-- Fullscreen Presentation Overlay -->
     <div id="presentation-overlay" onclick="handleOverlayClick(event)">
         <div id="presentation-slide-container"></div>
         <div id="nav-hint" class="absolute bottom-12 left-0 right-0 flex justify-center gap-4 text-gray-500 text-[10px] uppercase tracking-widest pointer-events-none">
@@ -410,7 +401,6 @@
         </button>
     </div>
 
-    <!-- Image Modal -->
     <div id="image-modal" class="modal-overlay" onclick="if(event.target === this) toggleImageModal()">
         <div class="modal-content">
             <div class="p-4 border-b border-[#3b405a] flex items-center justify-between">
@@ -434,7 +424,6 @@
         </div>
     </div>
 
-    <!-- Theme Modal -->
     <div id="theme-modal" class="modal-overlay" onclick="if(event.target === this) toggleThemeModal()">
         <div class="modal-content">
             <div class="p-4 border-b border-[#3b405a] flex items-center justify-between">
@@ -692,12 +681,53 @@
             const imgCount = images.length;
             const hasMedia = imgCount > 0 || iframes.length > 0;
 
+            const processIframe = (iframe) => {
+                const w = iframe.getAttribute('width');
+                const h = iframe.getAttribute('height');
+                const hasExplicitSize = w && h;
+                
+                sanitizeIframe(iframe);
+                
+                if (hasExplicitSize) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'relative mx-auto flex justify-center items-center mb-4';
+                    iframe.style.position = 'static';
+                    iframe.style.display = 'block';
+                    iframe.style.width = (parseInt(w) / 10) + 'cqw';
+                    iframe.style.height = (parseInt(h) / 5.625) + 'cqh';
+                    iframe.style.maxWidth = '100%';
+                    iframe.style.maxHeight = '100%';
+                    iframe.style.borderRadius = '0.5cqw';
+                    wrap.appendChild(iframe);
+                    return wrap;
+                } else {
+                    const isSmallWidget = w && parseInt(w) < 500;
+                    const wrap = document.createElement('div');
+                    wrap.className = isSmallWidget ? 'relative mx-auto flex justify-center mb-4' : 'video-container max-w-4xl mx-auto mb-4';
+                    if (isSmallWidget) {
+                        iframe.style.position = 'static';
+                        iframe.style.width = w + 'px';
+                        iframe.style.height = h + 'px';
+                        wrap.appendChild(iframe);
+                    } else {
+                        wrap.innerHTML = `
+                            <div class="iframe-fallback">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mb-2 opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                <p class="font-medium">External site could not be embedded.</p>
+                                <p class="text-[10px] mt-1 opacity-70">The site likely prevents cross-origin embedding for security.</p>
+                            </div>
+                        `;
+                        wrap.appendChild(iframe);
+                    }
+                    return wrap;
+                }
+            };
+
             if (imgCount === 4) {
                 const grid = document.createElement('div');
                 grid.className = 'image-grid-2x2';
                 images.forEach(img => {
                     img.src = resolveImageSrc(img.getAttribute('src'));
-                    img.className = 'w-full h-full object-cover rounded-lg shadow-lg';
                     grid.appendChild(img);
                 });
                 if (hasText) {
@@ -712,7 +742,6 @@
                 grid.className = 'image-grid-2x1';
                 images.forEach(img => {
                     img.src = resolveImageSrc(img.getAttribute('src'));
-                    img.className = 'w-full h-full object-cover rounded-lg shadow-lg';
                     grid.appendChild(img);
                 });
                 contentDiv.appendChild(grid);
@@ -723,70 +752,18 @@
                 textNodes.forEach(n => textCol.appendChild(n.cloneNode(true)));
                 images.forEach(img => {
                     img.src = resolveImageSrc(img.getAttribute('src'));
-                    img.className = 'max-w-full object-contain rounded-lg shadow-xl';
                     mediaCol.appendChild(img);
                 });
-                iframes.forEach(iframe => {
-                    const w = iframe.getAttribute('width');
-                    const h = iframe.getAttribute('height');
-                    const isSmallWidget = w && parseInt(w) < 500;
-                    
-                    const wrap = document.createElement('div');
-                    wrap.className = isSmallWidget ? 'relative mx-auto flex justify-center mb-2' : 'video-container mb-2';
-                    sanitizeIframe(iframe);
-                    
-                    if (isSmallWidget) {
-                        iframe.style.position = 'static';
-                        iframe.style.display = 'block';
-                        iframe.style.width = w + 'px';
-                        iframe.style.height = h + 'px';
-                        iframe.style.borderRadius = '0.5cqw';
-                        wrap.appendChild(iframe);
-                    } else {
-                        wrap.innerHTML = `
-                            <div class="iframe-fallback">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mb-2 opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                                <p class="font-medium">External site could not be embedded.</p>
-                                <p class="text-[10px] mt-1 opacity-70">The site likely prevents cross-origin embedding for security.</p>
-                            </div>
-                        `;
-                        wrap.appendChild(iframe);
-                    }
-                    mediaCol.appendChild(wrap);
-                });
+                iframes.forEach(iframe => mediaCol.appendChild(processIframe(iframe)));
             } else {
                 const center = document.createElement('div');
                 center.className = 'slide-layout-center';
                 if (hasMedia) {
                     images.forEach(img => {
                         img.src = resolveImageSrc(img.getAttribute('src'));
-                        img.className = 'max-h-[70cqh] object-contain rounded-lg shadow-xl mx-auto block mb-4';
                         center.appendChild(img);
                     });
-                    iframes.forEach(iframe => {
-                        const w = iframe.getAttribute('width');
-                        const h = iframe.getAttribute('height');
-                        const isSmallWidget = w && parseInt(w) < 500;
-                        const wrap = document.createElement('div');
-                        wrap.className = isSmallWidget ? 'relative mx-auto flex justify-center mb-4' : 'video-container max-w-4xl mx-auto mb-4';
-                        sanitizeIframe(iframe);
-                        if (isSmallWidget) {
-                            iframe.style.position = 'static';
-                            iframe.style.width = w + 'px';
-                            iframe.style.height = h + 'px';
-                            wrap.appendChild(iframe);
-                        } else {
-                            wrap.innerHTML = `
-                                <div class="iframe-fallback">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mb-2 opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                                    <p class="font-medium">External site could not be embedded.</p>
-                                    <p class="text-[10px] mt-1 opacity-70">The site likely prevents cross-origin embedding for security.</p>
-                                </div>
-                            `;
-                            wrap.appendChild(iframe);
-                        }
-                        center.appendChild(wrap);
-                    });
+                    iframes.forEach(iframe => center.appendChild(processIframe(iframe)));
                 }
                 textNodes.forEach(n => center.appendChild(n.cloneNode(true)));
                 contentDiv.appendChild(center);
@@ -858,9 +835,33 @@
             window.renderTimeout = setTimeout(renderSlides, 150);
         });
 
+        // Implement sync listener
+        editor.on("cursorActivity", () => {
+            const cursor = editor.getCursor();
+            const lines = editor.getValue().split('\n');
+            let slideIndex = 0;
+            for (let i = 0; i < cursor.line; i++) {
+                if (lines[i].match(/^-{3,}\s*$/)) {
+                    slideIndex++;
+                }
+            }
+            
+            // Sync currentSlideIndex
+            if (window.lastSyncedIndex !== slideIndex) {
+                window.lastSyncedIndex = slideIndex;
+                currentSlideIndex = slideIndex;
+                const slidesInPreview = previewContainer.querySelectorAll('.slide-wrapper');
+                if (slidesInPreview[slideIndex]) {
+                    slidesInPreview[slideIndex].scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'nearest' 
+                    });
+                }
+            }
+        });
+
         function present() {
             if (slideElements.length === 0) return;
-            currentSlideIndex = 0;
             updatePresentation();
             overlay.classList.add('active');
             
@@ -873,9 +874,11 @@
 
         function updatePresentation() {
             overlayContainer.innerHTML = '';
-            const wrapper = slideElements[currentSlideIndex].cloneNode(true);
-            overlayContainer.appendChild(wrapper);
-            autoFitSlide(wrapper);
+            if (slideElements[currentSlideIndex]) {
+                const wrapper = slideElements[currentSlideIndex].cloneNode(true);
+                overlayContainer.appendChild(wrapper);
+                autoFitSlide(wrapper);
+            }
             syncPresenter();
         }
 
@@ -963,17 +966,14 @@
                 </html>
             `;
 
-            // Clear any existing content and append new HTML
             presenterWindow.document.open();
             presenterWindow.document.write(html);
             presenterWindow.document.close();
             
-            // Re-inject main app styles into presenter window
             const style = presenterWindow.document.createElement('style');
             style.innerHTML = document.querySelector('style').innerHTML;
             presenterWindow.document.head.appendChild(style);
 
-            // Give the window a moment to parse before initial sync
             setTimeout(() => {
                 syncPresenter();
             }, 500);
