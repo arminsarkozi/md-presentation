@@ -33,7 +33,7 @@
             background-color: #0f111a; 
         }
 
-        /* Editor Overrides - Fixed Overlap */
+        /* Editor Overrides - Fixed Overlap & Gutter Spacing */
         .CodeMirror {
             height: 100% !important;
             font-family: 'JetBrains Mono', monospace;
@@ -44,14 +44,16 @@
         .CodeMirror-gutters {
             background: #0f111a !important;
             border-right: 1px solid #1f2233 !important;
-            padding-right: 8px; /* Extra space for line numbers */
+            width: 45px !important; 
         }
         .CodeMirror-linenumber {
             color: #4b526d !important;
-            padding-left: 12px;
+            padding-right: 10px !important;
+            min-width: 30px !important;
+            text-align: right !important;
         }
         .CodeMirror-lines {
-            padding-left: 10px; /* Space between gutter and text */
+            padding-left: 8px !important; 
         }
 
         /* Custom Scrollbar */
@@ -151,7 +153,7 @@
             overflow: hidden;
             border-radius: 1cqw;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            background: #000;
+            background: rgba(0,0,0,0.05);
         }
         .video-container iframe {
             position: absolute;
@@ -160,6 +162,24 @@
             width: 100%;
             height: 100%;
             border: 0;
+            z-index: 2;
+        }
+        .iframe-fallback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2cqw;
+            text-align: center;
+            background: #f3f4f6;
+            color: #4b5563;
+            font-size: 1.5cqw;
+            z-index: 1;
         }
 
         .slide-layout-center {
@@ -524,7 +544,14 @@
 
         function sanitizeIframe(iframe) {
             let src = iframe.getAttribute('src');
-            if (src && src.includes('youtube.com/embed')) {
+            if (!src) return;
+
+            if (src.startsWith('http://')) {
+                src = src.replace('http://', 'https://');
+                iframe.setAttribute('src', src);
+            }
+
+            if (src.includes('youtube.com/embed')) {
                 const url = new URL(src);
                 url.searchParams.set('origin', window.location.origin);
                 url.searchParams.set('enablejsapi', '1');
@@ -700,10 +727,31 @@
                     mediaCol.appendChild(img);
                 });
                 iframes.forEach(iframe => {
+                    const w = iframe.getAttribute('width');
+                    const h = iframe.getAttribute('height');
+                    const isSmallWidget = w && parseInt(w) < 500;
+                    
                     const wrap = document.createElement('div');
-                    wrap.className = 'video-container mb-2';
+                    wrap.className = isSmallWidget ? 'relative mx-auto flex justify-center mb-2' : 'video-container mb-2';
                     sanitizeIframe(iframe);
-                    wrap.appendChild(iframe);
+                    
+                    if (isSmallWidget) {
+                        iframe.style.position = 'static';
+                        iframe.style.display = 'block';
+                        iframe.style.width = w + 'px';
+                        iframe.style.height = h + 'px';
+                        iframe.style.borderRadius = '0.5cqw';
+                        wrap.appendChild(iframe);
+                    } else {
+                        wrap.innerHTML = `
+                            <div class="iframe-fallback">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mb-2 opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                <p class="font-medium">External site could not be embedded.</p>
+                                <p class="text-[10px] mt-1 opacity-70">The site likely prevents cross-origin embedding for security.</p>
+                            </div>
+                        `;
+                        wrap.appendChild(iframe);
+                    }
                     mediaCol.appendChild(wrap);
                 });
             } else {
@@ -714,6 +762,30 @@
                         img.src = resolveImageSrc(img.getAttribute('src'));
                         img.className = 'max-h-[70cqh] object-contain rounded-lg shadow-xl mx-auto block mb-4';
                         center.appendChild(img);
+                    });
+                    iframes.forEach(iframe => {
+                        const w = iframe.getAttribute('width');
+                        const h = iframe.getAttribute('height');
+                        const isSmallWidget = w && parseInt(w) < 500;
+                        const wrap = document.createElement('div');
+                        wrap.className = isSmallWidget ? 'relative mx-auto flex justify-center mb-4' : 'video-container max-w-4xl mx-auto mb-4';
+                        sanitizeIframe(iframe);
+                        if (isSmallWidget) {
+                            iframe.style.position = 'static';
+                            iframe.style.width = w + 'px';
+                            iframe.style.height = h + 'px';
+                            wrap.appendChild(iframe);
+                        } else {
+                            wrap.innerHTML = `
+                                <div class="iframe-fallback">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mb-2 opacity-50"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                    <p class="font-medium">External site could not be embedded.</p>
+                                    <p class="text-[10px] mt-1 opacity-70">The site likely prevents cross-origin embedding for security.</p>
+                                </div>
+                            `;
+                            wrap.appendChild(iframe);
+                        }
+                        center.appendChild(wrap);
                     });
                 }
                 textNodes.forEach(n => center.appendChild(n.cloneNode(true)));
@@ -814,7 +886,8 @@
                 return;
             }
             
-            presenterWindow = window.open('', 'PresenterView', 'width=1100,height=700');
+            presenterWindow = window.open('about:blank', 'PresenterView', 'width=1100,height=700');
+            
             const html = `
                 <!DOCTYPE html>
                 <html>
@@ -833,7 +906,7 @@
                         .nav-btn:active { transform: scale(0.98); }
                     </style>
                 </head>
-                <body>
+                <body id="presenter-body">
                     <div class="flex gap-8 h-2/3 flex-1 min-h-0">
                         <div class="w-1/2 flex flex-col min-h-0">
                             <span class="label">Speaker Notes</span>
@@ -867,7 +940,6 @@
                             </button>
                         </div>
                     </div>
-
                     <script>
                         let startTime = Date.now();
                         setInterval(() => {
@@ -875,7 +947,8 @@
                             let h = String(Math.floor(diff / 3600)).padStart(2, '0');
                             let m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
                             let s = String(diff % 60).padStart(2, '0');
-                            document.getElementById('timer').innerText = h + ':' + m + ':' + s;
+                            const t = document.getElementById('timer');
+                            if (t) t.innerText = h + ':' + m + ':' + s;
                         }, 1000);
                         
                         window.onkeydown = (e) => {
@@ -884,48 +957,49 @@
                             if (e.key === 'Escape') window.opener.exitPresent();
                         };
                         
-                        window.addEventListener('resize', () => {
-                            window.opener.syncPresenter();
-                        });
+                        window.addEventListener('resize', () => { window.opener.syncPresenter(); });
                     <\/script>
                 </body>
                 </html>
             `;
+
+            // Clear any existing content and append new HTML
+            presenterWindow.document.open();
             presenterWindow.document.write(html);
             presenterWindow.document.close();
             
+            // Re-inject main app styles into presenter window
             const style = presenterWindow.document.createElement('style');
             style.innerHTML = document.querySelector('style').innerHTML;
             presenterWindow.document.head.appendChild(style);
-            
-            // Allow DOM to layout so offsetWidth is correct
+
+            // Give the window a moment to parse before initial sync
             setTimeout(() => {
                 syncPresenter();
-            }, 50);
+            }, 500);
         }
 
         function syncPresenter() {
             if (!presenterWindow || presenterWindow.closed) return;
-            
             const doc = presenterWindow.document;
-            
-            // Apply theme to the body so CSS descendant selectors target correctly
-            doc.body.className = `p-6 gap-6 flex flex-col min-h-0 ${currentTheme}`;
+            const body = doc.getElementById('presenter-body');
+            if (!body) return;
 
+            body.className = `p-6 gap-6 flex flex-col min-h-0 ${currentTheme}`;
             const currentBox = doc.getElementById('current-slide');
             const nextBox = doc.getElementById('next-slide');
             const notesBox = doc.getElementById('notes');
             const counterBox = doc.getElementById('counter');
+            
+            if (!currentBox || !nextBox || !notesBox || !counterBox) return;
 
-            if (!currentBox) return;
-
-            // Reset and Re-render Current Slide
             currentBox.innerHTML = '';
-            const currentWrap = slideElements[currentSlideIndex].cloneNode(true);
-            currentWrap.className = 'slide-wrapper'; // Theme is managed by the body
-            currentBox.appendChild(currentWrap);
-
-            // Reset and Re-render Next Slide
+            if (slideElements[currentSlideIndex]) {
+                const currentWrap = slideElements[currentSlideIndex].cloneNode(true);
+                currentWrap.className = 'slide-wrapper';
+                currentBox.appendChild(currentWrap);
+            }
+            
             nextBox.innerHTML = '';
             if (currentSlideIndex < slideElements.length - 1) {
                 const nextWrap = slideElements[currentSlideIndex + 1].cloneNode(true);
@@ -934,19 +1008,17 @@
             } else {
                 nextBox.innerHTML = '<div class="h-full flex items-center justify-center text-gray-700 uppercase tracking-widest text-xs font-bold bg-[#0a0c12]">End of Presentation</div>';
             }
-
-            // Sync notes and counter
+            
             const rawNote = speakerNotes[currentSlideIndex] || 'No notes for this slide.';
             notesBox.innerText = rawNote;
             counterBox.innerText = `Slide ${currentSlideIndex + 1} / ${slideElements.length}`;
-
-            // Correct Scaling Logic
+            
             [currentBox, nextBox].forEach(box => {
                 const wrapper = box.querySelector('.slide-wrapper');
                 if (wrapper) {
                     const scale = box.offsetWidth / 1000;
                     wrapper.style.width = '1000px';
-                    wrapper.style.height = '562.5px'; // Exact 16:9 ratio of 1000px
+                    wrapper.style.height = '562.5px';
                     wrapper.style.transform = `scale(${scale})`;
                 }
             });
